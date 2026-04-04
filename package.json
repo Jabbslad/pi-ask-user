@@ -1,0 +1,22 @@
+{
+  "name": "pi-ask-user",
+  "version": "0.1.0",
+  "type": "module",
+  "keywords": ["pi-package"],
+  "description": "AskUserQuestion tool for pi — structured multiple-choice questions for user interaction",
+  "scripts": {
+    "test": "node --test --import tsx tests/*.test.ts"
+  },
+  "pi": {
+    "extensions": ["./extensions"],
+    "skills": ["./skills"]
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-tui": "*"
+  }
+}
