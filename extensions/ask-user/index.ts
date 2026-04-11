@@ -498,7 +498,7 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 								qCursors[tabIdx] = Math.max(0, qCursors[tabIdx] - 1); onRefresh();
 							} else if (matchesKey(data, Key.down)) {
 								qCursors[tabIdx] = Math.min(allOptions.length, qCursors[tabIdx] + 1); onRefresh();
-							} else if (matchesKey(data, " ")) {
+							} else if (matchesKey(data, Key.space)) {
 								const c = qCursors[tabIdx];
 								if (c < allOptions.length) {
 									if (selected.has(c)) selected.delete(c); else selected.add(c);
@@ -724,7 +724,7 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 							cursor = Math.max(0, cursor - 1); refresh();
 						} else if (matchesKey(data, Key.down)) {
 							cursor = Math.min(allOptions.length - 1, cursor + 1); refresh();
-						} else if (matchesKey(data, " ")) {
+						} else if (matchesKey(data, Key.space)) {
 							if (selected.has(cursor)) selected.delete(cursor); else selected.add(cursor);
 							refresh();
 						} else if (matchesKey(data, Key.enter)) {
