@@ -32,6 +32,10 @@ In plan mode, use AskUserQuestion to clarify requirements or choose between appr
 
 ## Features
 
+### "Other" Option (Auto-Added)
+
+Every question automatically includes an "Other (type your own)" option. Do NOT add your own "Other" or "Custom" option — it's already there. When the user selects it, they're prompted for freeform text input.
+
 ### Preview Content (Side-by-Side View)
 
 Use the optional `preview` field on options when presenting concrete artifacts that users need to visually compare:
@@ -44,7 +48,7 @@ When any option has a `preview`, the UI switches to a side-by-side layout with o
 
 ### Annotations (Notes)
 
-In preview mode, users can press `n` to add free-text notes to their selection. These notes are returned alongside the answer, giving you richer context about the user's intent.
+In single-question preview mode, users can press `n` to add free-text notes to their selection. These notes are returned alongside the answer as `user notes: ...`, giving you richer context about the user's intent. Notes are only available in the preview layout (questions with `preview` fields).
 
 ### Tab Navigation (Multi-Question)
 
@@ -55,11 +59,26 @@ When you ask 2-4 questions, the UI shows a tab bar at the top:
 
 ### Chat About This
 
-Every question includes a "Chat about this" option below the main choices. If the user selects it, you'll receive feedback indicating they want to discuss the question rather than pick an option. Respond by asking what they'd like to clarify.
+Every question includes a "Chat about this" option below the main choices. If the user selects it, you'll receive a response like:
+
+> The user wants to discuss this question rather than pick an option.
+> Ask them what they'd like to clarify.
+
+Respond conversationally — ask what they'd like to discuss or clarify about the options.
+
+### Keyboard Shortcuts
+
+- `↑/↓` — Navigate between options
+- `Enter` — Select / submit
+- `Esc` — Cancel
+- `1`–`9` — Jump directly to an option by number (single-select only)
+- `Space` — Toggle checkbox (multi-select only)
+- `←/→` — Switch between question tabs (multi-question only)
+- `n` — Add notes (preview mode only)
 
 ### Auto-Submit
 
-For single-question, single-select flows, selecting an option immediately submits the answer — no extra confirmation step needed.
+For single-question flows, selecting an option immediately submits the answer — no extra confirmation step needed. Multi-question flows require navigating to the Submit tab.
 
 ## Best Practices
 
@@ -72,6 +91,7 @@ For single-question, single-select flows, selecting an option immediately submit
 - **Scale to the task** — A vague feature request may need 3-4 questions. A focused bug fix may need none
 - **Use previews for visual choices** — When the user needs to compare layouts, code patterns, or configurations side-by-side
 - **Keep questions unique** — Each question text must be unique within a call, and option labels must be unique within each question
+- **Don't add an "Other" option** — It's automatically appended to every question. Adding your own creates a duplicate
 
 ## Examples
 
@@ -131,6 +151,26 @@ AskUserQuestion({
 })
 ```
 
+### Good Usage — Multi-Select
+
+User says: "Set up the project linting"
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "Which linting rules should we enable?",
+    header: "Lint rules",
+    multiSelect: true,
+    options: [
+      { label: "No unused vars", description: "Error on declared but unused variables" },
+      { label: "Strict equality", description: "Require === instead of ==" },
+      { label: "No console", description: "Warn on console.log statements" },
+      { label: "Import order", description: "Enforce consistent import sorting" }
+    ]
+  }]
+})
+```
+
 ### Bad Usage — Don't Do This
 
 ```
@@ -170,6 +210,19 @@ AskUserQuestion({
     options: [
       { label: "Option A", description: "First" },
       { label: "Option A", description: "Second" }
+    ]
+  }]
+})
+
+# Don't add your own "Other" — it's automatic
+AskUserQuestion({
+  questions: [{
+    question: "Which one?",
+    header: "Pick",
+    options: [
+      { label: "React", description: "..." },
+      { label: "Vue", description: "..." },
+      { label: "Other", description: "Something else" }  // ← redundant!
     ]
   }]
 })
