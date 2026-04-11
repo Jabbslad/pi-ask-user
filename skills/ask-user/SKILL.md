@@ -15,6 +15,7 @@ Use this tool when you need structured user input. It works during normal coding
 3. **Implementation choices** — "Which auth strategy?" with JWT, session cookies, OAuth options
 4. **Offer trade-offs** — "Optimize for speed or readability?" when the approaches differ significantly
 5. **Architecture decisions** — "Where should this component live?" with different directory options
+6. **Visual comparisons** — "Which layout?" with preview content showing ASCII mockups of each option
 
 **Do NOT use AskUserQuestion when:**
 - A simple yes/no suffices — just ask in text
@@ -29,6 +30,37 @@ In plan mode, use AskUserQuestion to clarify requirements or choose between appr
 
 **Do NOT** use AskUserQuestion to ask about the plan itself (e.g., "Does the plan look good?", "Any changes?"). The user cannot see the plan until you call ExitPlanMode. Use ExitPlanMode for plan approval.
 
+## Features
+
+### Preview Content (Side-by-Side View)
+
+Use the optional `preview` field on options when presenting concrete artifacts that users need to visually compare:
+- ASCII mockups of UI layouts or components
+- Code snippets showing different implementations
+- Diagram variations
+- Configuration examples
+
+When any option has a `preview`, the UI switches to a side-by-side layout with options on the left and a preview panel on the right that updates as the user navigates. Previews are only supported for single-select questions (not multiSelect).
+
+### Annotations (Notes)
+
+In preview mode, users can press `n` to add free-text notes to their selection. These notes are returned alongside the answer, giving you richer context about the user's intent.
+
+### Tab Navigation (Multi-Question)
+
+When you ask 2-4 questions, the UI shows a tab bar at the top:
+- `←/→` arrows to navigate between questions
+- Visual indicators showing answered (●) vs unanswered (○) questions
+- A Submit tab at the end to review and confirm all answers
+
+### Chat About This
+
+Every question includes a "Chat about this" option below the main choices. If the user selects it, you'll receive feedback indicating they want to discuss the question rather than pick an option. Respond by asking what they'd like to clarify.
+
+### Auto-Submit
+
+For single-question, single-select flows, selecting an option immediately submits the answer — no extra confirmation step needed.
+
 ## Best Practices
 
 - **Batch related questions** — Ask up to 4 questions in one call to reduce back-and-forth
@@ -38,10 +70,12 @@ In plan mode, use AskUserQuestion to clarify requirements or choose between appr
 - **Use headers** — Short tags like "Auth", "Framework", "Approach" (max 12 chars)
 - **Don't ask what you can discover** — Read the code first. Only ask about things the user knows that the code doesn't tell you
 - **Scale to the task** — A vague feature request may need 3-4 questions. A focused bug fix may need none
+- **Use previews for visual choices** — When the user needs to compare layouts, code patterns, or configurations side-by-side
+- **Keep questions unique** — Each question text must be unique within a call, and option labels must be unique within each question
 
 ## Examples
 
-### Good Usage
+### Good Usage — Standard Questions
 
 User says: "Add caching to the API"
 
@@ -62,6 +96,36 @@ AskUserQuestion({
       { label: "5 minutes", description: "Good for frequently changing data" },
       { label: "1 hour (Recommended)", description: "Balance between freshness and performance" },
       { label: "24 hours", description: "Best performance, data may be stale" }
+    ]
+  }]
+})
+```
+
+### Good Usage — Preview Content
+
+User says: "Design the dashboard layout"
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "Which dashboard layout should we use?",
+    header: "Layout",
+    options: [
+      {
+        label: "Grid layout",
+        description: "Cards arranged in a responsive grid",
+        preview: "+------+------+------+\n| Card | Card | Card |\n+------+------+------+\n| Card | Card | Card |\n+------+------+------+\n|    Wide chart       |\n+---------------------+"
+      },
+      {
+        label: "Sidebar + main",
+        description: "Fixed sidebar with scrollable main area",
+        preview: "+--------+-----------------+\n|  Nav   |                 |\n|        |  Main content   |\n|  Home  |                 |\n|  Dash  |  [widgets]      |\n|  Users |                 |\n+--------+-----------------+"
+      },
+      {
+        label: "Full-width stack",
+        description: "Vertically stacked full-width sections",
+        preview: "+---------------------+\n|    Header bar       |\n+---------------------+\n|    Stats row        |\n+---------------------+\n|    Chart section    |\n+---------------------+\n|    Data table       |\n+---------------------+"
+      }
     ]
   }]
 })
@@ -95,6 +159,18 @@ AskUserQuestion({
   questions: [{
     question: "Does the plan look good?",
     ...
+  }]
+})
+
+# Duplicate option labels (will be rejected)
+AskUserQuestion({
+  questions: [{
+    question: "Which one?",
+    header: "Pick",
+    options: [
+      { label: "Option A", description: "First" },
+      { label: "Option A", description: "Second" }
+    ]
   }]
 })
 ```
