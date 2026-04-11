@@ -11,7 +11,7 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { Text, Key, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@mariozechner/pi-tui";
+import { Text, Key, matchesKey, truncateToWidth, wrapTextWithAnsi } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 
 // ── Schema ───────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ const BOX = {
 
 // ── Validation ───────────────────────────────────────────────────────
 
-function validateUniqueness(questions: Question[]): string | null {
+export function validateUniqueness(questions: Question[]): string | null {
 	const questionTexts = questions.map((q) => q.question);
 	if (questionTexts.length !== new Set(questionTexts).size) {
 		return "Question texts must be unique.";
@@ -138,6 +138,30 @@ function pad(s: string, w: number): string {
 /** Build a horizontal rule */
 function hr(width: number, char = BOX.h): string {
 	return char.repeat(width);
+}
+
+/** Render the "Chat about this" divider and option */
+function appendChatOption(lines: string[], isCursor: boolean, width: number, theme: any): void {
+	lines.push("");
+	lines.push(truncateToWidth(theme.fg("dim", ` ${BOX.divider.repeat(Math.min(40, width - 2))}`), width));
+	const prefix = isCursor ? ` ${BOX.pointer} ` : "   ";
+	lines.push(truncateToWidth(prefix + theme.fg(isCursor ? "accent" : "dim", CHAT_LABEL), width));
+}
+
+/** Format answers record into text for the model */
+function formatAnswersText(
+	answers: Record<string, string>,
+	annotations?: Record<string, Annotation>,
+): string {
+	return Object.entries(answers)
+		.map(([question, answer]) => {
+			const ann = annotations?.[question];
+			const parts = [`"${question}" ${BOX.arrow} "${answer}"`];
+			if (ann?.preview) parts.push(`selected preview:\n${ann.preview}`);
+			if (ann?.notes) parts.push(`user notes: ${ann.notes}`);
+			return parts.join(" ");
+		})
+		.join("\n");
 }
 
 /** Render tab navigation bar for multi-question flows */
@@ -397,7 +421,6 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 						const questionAnswers: Record<string, string> = {};
 						const questionAnnotations: Record<string, Annotation> = {};
 						const questionCursors: number[] = questions.map(() => 0);
-						const questionNotes: string[] = questions.map(() => "");
 						let submitCursor = 0;
 						let cachedLines: string[] | undefined;
 
@@ -447,7 +470,7 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 									if (currentTab < maxTab) { currentTab++; refresh(); }
 								}, () => done(null));
 							} else {
-								handleSingleSelectInput(data, q, currentTab, questionAnswers, questionAnnotations, questionCursors, questionNotes, refresh, () => {
+								handleSingleSelectInput(data, q, currentTab, questionAnswers, questionAnnotations, questionCursors, refresh, () => {
 									// Advance to next tab
 									if (currentTab < maxTab) { currentTab++; refresh(); }
 								}, () => done(null), () => done({ answers: questionAnswers, annotations: questionAnnotations, chatAbout: true }));
@@ -486,6 +509,7 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 								for (const idx of Array.from(selected).sort()) {
 									if (idx < q.options.length) results.push(q.options[idx].label);
 								}
+								if (selected.has(allOptions.length - 1)) results.push("__OTHER__");
 								qAnswers[q.question] = results.join(", ");
 								onAdvance();
 							} else if (matchesKey(data, Key.escape)) {
@@ -501,13 +525,11 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 							qAnswers: Record<string, string>,
 							qAnnotations: Record<string, Annotation>,
 							qCursors: number[],
-							qNotes: string[],
 							onRefresh: () => void,
 							onAdvance: () => void,
 							onCancel: () => void,
 							onChatAbout: () => void,
 						) {
-							const hasPreview = q.options.some((o) => o.preview);
 							const totalItems = q.options.length + 1; // +1 for "Chat about this"
 							const chatIdx = q.options.length;
 
@@ -515,10 +537,6 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 								qCursors[tabIdx] = Math.max(0, qCursors[tabIdx] - 1); onRefresh();
 							} else if (matchesKey(data, Key.down)) {
 								qCursors[tabIdx] = Math.min(totalItems - 1, qCursors[tabIdx] + 1); onRefresh();
-							} else if (matchesKey(data, "n") && hasPreview) {
-								// Notes not implemented in tabbed non-preview mode — only preview
-								// For preview: handled in the preview-specific flow
-								// (notes editing would require a sub-mode; keeping simple for now)
 							} else if (matchesKey(data, Key.enter)) {
 								const c = qCursors[tabIdx];
 								if (c === chatIdx) {
@@ -526,11 +544,8 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 								} else if (c < q.options.length) {
 									const selected = q.options[c];
 									qAnswers[q.question] = selected.label;
-									if (qNotes[tabIdx] || selected.preview) {
-										qAnnotations[q.question] = {
-											...(selected.preview && { preview: selected.preview }),
-											...(qNotes[tabIdx] && { notes: qNotes[tabIdx] }),
-										};
+									if (selected.preview) {
+										qAnnotations[q.question] = { preview: selected.preview };
 									}
 									onAdvance();
 								}
@@ -560,8 +575,7 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 									lines.push(...renderPreviewQuestion(
 										q, questionCursors[currentTab],
 										questionAnswers[q.question],
-										questionNotes[currentTab],
-										false, width, theme,
+										"", false, width, theme,
 									));
 								} else if (isMulti) {
 									// Multi-select rendering
@@ -612,15 +626,7 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 									}
 
 									// Divider before "Chat about this"
-									lines.push("");
-									add(theme.fg("dim", ` ${BOX.divider.repeat(Math.min(40, width - 2))}`));
-									const chatCursor = questionCursors[currentTab] === q.options.length;
-									const chatPrefix = chatCursor ? ` ${BOX.pointer} ` : "   ";
-									if (chatCursor) {
-										add(chatPrefix + theme.fg("accent", CHAT_LABEL));
-									} else {
-										add(chatPrefix + theme.fg("dim", CHAT_LABEL));
-									}
+									appendChatOption(lines, questionCursors[currentTab] === q.options.length, width, theme);
 
 									lines.push("");
 									add(theme.fg("dim", ` Enter select ${BOX.divider} ↑/↓ nav ${BOX.divider} ←/→ questions ${BOX.divider} Esc cancel`));
@@ -661,20 +667,25 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 					};
 				}
 
+				// Post-process "Other" selections for multi-select questions
+				for (const q of questions) {
+					if (q.multiSelect && result.answers[q.question]?.includes("__OTHER__")) {
+						const custom = await ctx.ui.input(`${q.header} — custom answer:`, "Type your answer...");
+						if (custom) {
+							result.answers[q.question] = result.answers[q.question].replace("__OTHER__", custom);
+						} else {
+							result.answers[q.question] = result.answers[q.question].replace(", __OTHER__", "").replace("__OTHER__", "");
+						}
+					}
+				}
+
 				// Collect annotations
 				const finalAnnotations: Record<string, Annotation> = {};
 				for (const [k, v] of Object.entries(result.annotations)) {
 					if (v.preview || v.notes) finalAnnotations[k] = v;
 				}
 
-				const answersText = Object.entries(result.answers)
-					.map(([question, answer]) => {
-						const ann = finalAnnotations[question];
-						const parts = [`"${question}" ${BOX.arrow} "${answer}"`];
-						if (ann?.notes) parts.push(`user notes: ${ann.notes}`);
-						return parts.join(" ");
-					})
-					.join("\n");
+				const answersText = formatAnswersText(result.answers, finalAnnotations);
 
 				return {
 					content: [{
@@ -855,15 +866,7 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 							const blankLine = lines.pop()!;
 
 							if (!isNotesActive) {
-								lines.push("");
-								lines.push(truncateToWidth(theme.fg("dim", ` ${BOX.divider.repeat(Math.min(40, width - 2))}`), width));
-								const isChatCursor = cursor === chatIdx;
-								const chatPrefix = isChatCursor ? ` ${BOX.pointer} ` : "   ";
-								if (isChatCursor) {
-									lines.push(truncateToWidth(chatPrefix + theme.fg("accent", CHAT_LABEL), width));
-								} else {
-									lines.push(truncateToWidth(chatPrefix + theme.fg("dim", CHAT_LABEL), width));
-								}
+								appendChatOption(lines, cursor === chatIdx, width, theme);
 							}
 
 							lines.push(blankLine);
@@ -971,15 +974,7 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 							add(`      ${theme.fg("muted", "Type a custom answer")}`);
 
 							// Divider + Chat about this
-							lines.push("");
-							add(theme.fg("dim", ` ${BOX.divider.repeat(Math.min(40, width - 2))}`));
-							const isChatCursor = cursor === chatIdx;
-							const chatPrefix = isChatCursor ? ` ${BOX.pointer} ` : "   ";
-							if (isChatCursor) {
-								add(chatPrefix + theme.fg("accent", CHAT_LABEL));
-							} else {
-								add(chatPrefix + theme.fg("dim", CHAT_LABEL));
-							}
+							appendChatOption(lines, cursor === chatIdx, width, theme);
 
 							lines.push("");
 							add(theme.fg("dim", ` Enter select ${BOX.divider} ↑/↓ nav ${BOX.divider} Esc cancel`));
@@ -1019,15 +1014,7 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 			}
 
 			// Format answers for the model
-			const answersText = Object.entries(answers)
-				.map(([question, answer]) => {
-					const ann = annotations[question];
-					const parts = [`"${question}" ${BOX.arrow} "${answer}"`];
-					if (ann?.preview) parts.push(`selected preview:\n${ann.preview}`);
-					if (ann?.notes) parts.push(`user notes: ${ann.notes}`);
-					return parts.join(" ");
-				})
-				.join("\n");
+			const answersText = formatAnswersText(answers, annotations);
 
 			return {
 				content: [{

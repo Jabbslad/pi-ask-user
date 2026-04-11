@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { validateUniqueness } from "../extensions/ask-user/index.ts";
 
 /**
  * Tests for AskUserQuestion extension.
@@ -154,21 +155,6 @@ describe("header constraints", () => {
 // ── Uniqueness validation ────────────────────────────────────────────
 
 describe("uniqueness validation", () => {
-	// Reimplemented here to test the logic independently
-	function validateUniqueness(questions: { question: string; options: { label: string }[] }[]): string | null {
-		const questionTexts = questions.map((q) => q.question);
-		if (questionTexts.length !== new Set(questionTexts).size) {
-			return "Question texts must be unique.";
-		}
-		for (const q of questions) {
-			const labels = q.options.map((o) => o.label);
-			if (labels.length !== new Set(labels).size) {
-				return `Option labels must be unique within question "${q.question}".`;
-			}
-		}
-		return null;
-	}
-
 	it("passes for unique questions and labels", () => {
 		const result = validateUniqueness([
 			{ question: "Q1?", options: [{ label: "A" }, { label: "B" }] },
