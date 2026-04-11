@@ -92,6 +92,7 @@ For single-question flows, selecting an option immediately submits the answer �
 - **Use previews for visual choices** — When the user needs to compare layouts, code patterns, or configurations side-by-side
 - **Keep questions unique** — Each question text must be unique within a call, and option labels must be unique within each question
 - **Don't add an "Other" option** — It's automatically appended to every question. Adding your own creates a duplicate
+- **Follow up after subtasks** — If the user picked one option from a broader set (e.g. "SKILL.md" from a list of doc targets), circle back after completing it to ask if they want to tackle another. Don't do this for one-off choices like "which framework?"
 
 ## Examples
 
