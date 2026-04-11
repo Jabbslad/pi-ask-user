@@ -6,9 +6,14 @@ AskUserQuestion tool extension for [pi](https://github.com/badlogic/pi-mono) —
 
 - **Structured questions** — 1-4 questions with 2-4 options each
 - **Single & multi-select** — Pick one or toggle multiple choices
-- **"Other" escape hatch** — Users can always type a custom answer
-- **Custom rendering** — Clean TUI display of questions and answers
-- **Companion skill** — Detailed usage guidelines for the model
+- **Preview mode** — Side-by-side layout with a live preview panel for visual comparisons (ASCII mockups, code snippets, diagrams)
+- **Tab navigation** — Multi-question flows get a tab bar with ←/→ navigation and a submit review step
+- **"Other" escape hatch** — Auto-added to every question; prompts for freeform text input
+- **"Chat about this"** — Always-present option for when the user wants to discuss rather than pick
+- **Annotations** — Users can attach free-text notes to their selection in preview mode
+- **Keyboard shortcuts** — Number keys to jump to options, Space to toggle checkboxes, `n` for notes
+- **Custom rendering** — Clean TUI display of questions and answers in the pi interface
+- **Companion skill** — Detailed usage guidelines the model can load on demand
 
 ## Installation
 
@@ -37,9 +42,9 @@ The model calls `AskUserQuestion` automatically when it needs user input. You ca
 /skill:ask-user
 ```
 
-### Example
+### Examples
 
-The model might ask:
+Single-select with a recommendation:
 
 ```
 AskUserQuestion({
@@ -55,7 +60,41 @@ AskUserQuestion({
 })
 ```
 
-The user sees a selection dialog and picks an option (or types "Other").
+Preview mode for visual comparison:
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "Which dashboard layout?",
+    header: "Layout",
+    options: [
+      { label: "Grid", description: "Responsive card grid",
+        preview: "+------+------+\n| Card | Card |\n+------+------+" },
+      { label: "Sidebar", description: "Fixed sidebar + main",
+        preview: "+-----+----------+\n| Nav | Content  |\n+-----+----------+" }
+    ]
+  }]
+})
+```
+
+Multi-select:
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "Which linting rules should we enable?",
+    header: "Lint rules",
+    multiSelect: true,
+    options: [
+      { label: "No unused vars", description: "Error on unused variables" },
+      { label: "Strict equality", description: "Require === instead of ==" },
+      { label: "Import order", description: "Enforce consistent import sorting" }
+    ]
+  }]
+})
+```
+
+The user sees a TUI dialog and picks options, types "Other", or selects "Chat about this" to discuss further.
 
 ## Works with pi-plan-mode
 
