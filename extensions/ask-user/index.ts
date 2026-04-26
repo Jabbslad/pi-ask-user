@@ -372,8 +372,11 @@ export default function askUserExtension(pi: ExtensionAPI): void {
 			"side-by-side comparison of code snippets, mockups, or diagrams.",
 		promptSnippet: "Ask the user structured multiple-choice questions",
 		promptGuidelines: [
-			"Use AskUserQuestion when you need to clarify ambiguous requirements, gather user preferences, or offer implementation choices.",
-			"Do NOT use AskUserQuestion for yes/no questions — just ask in text. Use it when there are 2-4 distinct options to choose from.",
+			"Prefer this tool over plain-text questions when there are 2-4 concrete choices.",
+			"Use proactively before coding when requirements are ambiguous and the answer cannot be found in the repo.",
+			"Use for implementation choices, design/layout choices, library/tooling choices, and user preference decisions.",
+			"Do not use for simple yes/no questions; ask those in text.",
+			"Do not use for plan approval; use ExitPlanMode instead.",
 			"If you recommend a specific option, make it the first option and add '(Recommended)' to the label.",
 			"Use the optional 'preview' field on options when presenting concrete artifacts that users need to visually compare: " +
 				"ASCII mockups of UI layouts, code snippets showing different implementations, diagram variations, or configuration examples. " +
